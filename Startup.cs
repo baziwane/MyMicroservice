@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -28,6 +30,13 @@ namespace MyMicroservice
         {
 
             services.AddControllers();
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders =
+                    ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.KnownProxies.Add(IPAddress.Parse("127.0.0.1"));
+            });
+            services.AddHealthChecks();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "MyMicroservice", Version = "v1" });
@@ -44,6 +53,10 @@ namespace MyMicroservice
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyMicroservice v1"));
             }
 
+            app.UseForwardedHeaders();
+
+            app.UsePathBase("/mymicroservice");
+
             app.UseHttpsRedirection();
 
             app.UseRouting();
@@ -52,6 +65,8 @@ namespace MyMicroservice
 
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapHealthChecks("/healthcheck");
+                endpoints.MapHealthChecks("/ready");
                 endpoints.MapControllers();
             });
         }
